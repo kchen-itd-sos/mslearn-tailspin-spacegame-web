@@ -1,17 +1,90 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
 trigger:
-- main
+  - "*"
 
 pool:
-  vmImage: ubuntu-latest
+  name: Default # Replace Default with the name of your agent pool if you used a different pool
 
 variables:
-  buildConfiguration: 'Release'
+  buildConfiguration: "Release"
+  # GYP_MSVS_VERSION: '2022'  # Set the Visual Studio version here
 
 steps:
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
+  - task: UseDotNet@2
+    displayName: "Use .NET SDK 9.x"
+    inputs:
+      packageType: sdk
+      version: "9.x"
+
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: "build"
+      projects: 'C:\Users\kchen\OneDrive - California Secretary of State\Code\Personal Projects\mslearn-tailspin-spacegame-web\Tailspin.SpaceGame.Web.sln'
+
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "22.x" # or any version you need
+    displayName: "Install Node.js and npm"
+
+  - script: |
+      node -v
+      npm -v
+    displayName: "Check Node.js and npm versions"
+
+  # # Use local Python from agent capability
+  # - script: |
+  #     "C:\Program Files\Python313\python.exe" --version
+  #   displayName: "Check local Python version"
+
+  - task: PowerShell@2
+    displayName: "Install Build Tools and a Compatible Python"
+    inputs:
+      targetType: "inline"
+      script: |
+        # Check for and remove a broken Chocolatey installation
+        if (Test-Path "C:\ProgramData\chocolatey") {
+          Write-Host "Removing existing Chocolatey installation to ensure a clean install."
+          Remove-Item -Recurse -Force "C:\ProgramData\chocolatey"
+        }
+
+        # Now perform a clean installation of Chocolatey
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+        # Install Node.js, Visual Studio Build Tools, and a compatible Python version
+        choco install -y nodejs-lts
+        choco install -y visualstudio2022buildtools --package-parameters "'--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'"
+        choco install -y windows-sdk-10.0
+        choco install -y python --version=3.10.11 --params="/InstallDir:C:\Python310"
+
+  - script: |
+      @echo off
+      REM Set all required environment variables for node-gyp in a single session
+      set npm_config_python=C:\Python310\python.exe
+
+      REM Run npm install in the correctly configured environment
+      npm install
+    workingDirectory: Tailspin.SpaceGame.Web
+    displayName: "Install npm packages"
+
+  - script: 'node_modules\.bin\node-sass Tailspin.SpaceGame.Web\wwwroot --output Tailspin.SpaceGame.Web\wwwroot'
+    displayName: "Compile Sass assets"
+
+  - task: gulp@1
+    displayName: "Run gulp tasks"
+
+  - script: 'echo "$(Build.DefinitionName), $(Build.BuildId), $(Build.BuildNumber)" > buildinfo.txt'
+    displayName: "Write build info"
+    workingDirectory: Tailspin.SpaceGame.Web/wwwroot
+
+  - task: DotNetCoreCLI@2
+    displayName: "Restore project dependencies"
+    inputs:
+      command: "restore"
+      projects: "**/*.csproj"
+
+  - task: DotNetCoreCLI@2
+    displayName: "Build the project - Release"
+    inputs:
+      command: "build"
+      arguments: "--no-restore --configuration Release"
+      projects: "**/*.csproj"
