@@ -1,3 +1,4 @@
+[![Build Status](https://dev.azure.com/kevinchen234/Space%20Game%20-%20web%20-%20Pipeline/_apis/build/status%2Fkchen-itd-sos.mslearn-tailspin-spacegame-web?branchName=main)](https://dev.azure.com/kevinchen234/Space%20Game%20-%20web%20-%20Pipeline/_build/latest?definitionId=2&branchName=main)
 
 # Contributing
 
@@ -63,3 +64,4 @@ Privacy information can be found at https://privacy.microsoft.com/en-us/
 
 Microsoft and any contributors reserve all other rights, whether under their respective copyrights, patents,
 or trademarks, whether by implication, estoppel or otherwise.
+
